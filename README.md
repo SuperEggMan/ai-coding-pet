@@ -65,6 +65,8 @@ bash scripts/install-kiro-hooks.sh            # 安装（请奏默认关闭）
 bash scripts/install-kiro-hooks.sh --uninstall # 卸载
 ```
 
+只想对单个工程接入、或想看最小示例，见 [docs/examples/](docs/examples/)。
+
 ## 「请奏」= 拦下危险操作等你批
 
 这是最有分量的能力，也是默认关闭的：它会挂在 Kiro 的执行路径上。
