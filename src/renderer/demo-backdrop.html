@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+  <title>demo backdrop</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    /* 干净的演播背景:柔和的暖白→薄荷渐变 + 细网格,录屏不露工作环境。
+       宠物窗口层级在这之上,所以宠物站在这块画布上。 */
+    .canvas {
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(1200px 600px at 20% 120%, rgba(143, 214, 184, .28), transparent 60%),
+        radial-gradient(900px 500px at 90% -10%, rgba(180, 205, 255, .22), transparent 55%),
+        linear-gradient(160deg, #fdfbf4 0%, #f4f7f2 55%, #eef2ee 100%);
+      position: relative;
+    }
+    /* 细网格,增加一点"产品截图"质感,又不抢宠物 */
+    .canvas::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(120, 130, 140, .05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 130, 140, .05) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    /* 左上角一个轻标识,告诉观众这是什么 */
+    .brand {
+      position: absolute;
+      left: 26px;
+      top: 22px;
+      font: 600 15px/1.4 -apple-system, "PingFang SC", system-ui, sans-serif;
+      color: #6b7280;
+      letter-spacing: .3px;
+      user-select: none;
+    }
+    .brand .paw { font-size: 17px; }
+    .brand small { display: block; font-weight: 400; font-size: 11.5px; color: #9aa0ad; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="brand"><span class="paw">🐾</span> AI Coding Pet
+      <small>一个 AI coding 会话，一只桌宠</small>
+    </div>
+  </div>
+</body>
+</html>

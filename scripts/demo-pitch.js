@@ -82,21 +82,30 @@ async function run({ port }) {
   const C = 'demo-xhs';
 
   console.log('\n桌宠 30 秒演示 · 全自动跑完，不用手点');
-  console.log('录屏：Cmd+Shift+5 选「录制选定部分」，框住屏幕左下角一条 —— 宠物都排在左侧。');
-  console.log('现在开始，约 2 秒后进第一幕。');
-  await sleep(2000);
+  console.log('录屏：Cmd+Shift+5 选「录制选定部分」，框住屏幕左下角那块画布 —— 宠物都排在左侧。');
 
-  /* ───────── 幕 1（0~6s）：三只登场，名牌各不同 ───────── */
-  cue(1, '三只宠物登场，站成一排（脚下名牌各不同）', '看每只脚下的名牌：前两只同属 CenterSite，靠标题区分');
+  /* ───────── 预备:三只先静态登场并排,停在这里等你点录制 ─────────
+     把「登场」放在录制延迟**之前**,这样无论你什么时候点录制,画面里
+     三只宠物一直并排站好、名牌可见——不会因为点晚了错过登场。 */
   await ev({ session_id: A, kind: 'session_start', agent: 'kiro', project: 'CenterSite', cwd: '/repo/centersite', title: 'AI总结迁移' });
-  await sleep(700);
+  await sleep(500);
   await ev({ session_id: B, kind: 'session_start', agent: 'kiro', project: 'CenterSite', cwd: '/repo/centersite2', title: '稽核SQL口径' });
-  await sleep(700);
+  await sleep(500);
   await ev({ session_id: C, kind: 'session_start', agent: 'kiro', project: 'my-skills', cwd: '/repo/my-skills', title: '小红书选题' });
-  // 第一只立刻进入运行中，露一下跑步动画
+  await sleep(500);
+
+  // 开跑前留时间给你点录制;这期间三只已经站好,随时可录
+  const startDelay = Math.max(0, Number(process.env.AICP_PITCH_DELAY || 2)) * 1000;
+  if (startDelay > 2000) {
+    console.log(`\n>>> 三只已并排站好。现在去点「录制」，${startDelay / 1000} 秒后开始动作。 <<<\n`);
+  }
+  await sleep(startDelay);
+
+  /* ───────── 幕 1：第一只开跑（running 动画） ───────── */
+  cue(1, '第一只进入「运行中」，跑步动画', '看第一只:跑步姿势 + 右上角蓝色状态点');
   await ev({ session_id: A, kind: 'prompt', text: '把 AI 总结的三级分类迁到新表' });
   await ev({ session_id: A, kind: 'tool_pre', tool: 'read_file', input: { path: 'src/summary/classifier.py' }, text: '正在 read_file · classifier.py' });
-  await hold(4, '三只并排在屏幕左侧，第一只已在跑');
+  await hold(3, '第一只已在跑，另外两只待命');
 
   /* ───────── 幕 2（6~16s）：阅读流 + 危险度三色 ───────── */
   cue(2, '点开会话面板：阅读流 + 危险度三色', '看消息流每行左边框：蓝=只读 / 黄=写入 / 红=危险');

@@ -334,6 +334,10 @@ function main() {
         x: wa.x + 16 - HUB_ROW_START, // 抵消 _rowBounds 里的 +HUB_ROW_START,让第一只贴左边距 16 起
         bottomY: wa.y + wa.height - 16,
       }));
+      // 录制模式(pitch)铺一块干净的演播背景,盖住工作环境(Kiro/终端),
+      // 这样全屏录也不露桌面。背景窗**先于宠物创建、且不 moveTop**,宠物
+      // 在展开时会 moveTop 到它上面,所以宠物永远站在这块画布之上。
+      if (process.env.AICP_PITCH === '1') openDemoBackdrop(wa);
     }
 
     // 本机 kiro 会话自动同步:启动扫一次 → 之后靠监听库变化触发 → 兜底再加一层慢轮询
@@ -1111,6 +1115,40 @@ function buildTray() {
   tray = new Tray(nativeImage.createEmpty());
   refreshTray();
   tray.setToolTip('AI Coding Pet');
+}
+
+/**
+ * 录制演示用的干净背景（仅 pitch 模式）。铺满左下角一大块,盖住工作环境。
+ * 层级同为 screen-saver,但先创建、不 moveTop,宠物展开时会盖到它上面。
+ * 整窗点穿,不拦鼠标。
+ */
+let demoBackdropWin = null;
+function openDemoBackdrop(wa) {
+  const { BrowserWindow } = require('electron');
+  // 覆盖左下角:够放三只宠物一字排开 + 会话面板往上长的高度
+  const W = Math.min(760, wa.width);
+  const H = Math.min(620, wa.height);
+  demoBackdropWin = new BrowserWindow({
+    x: wa.x,
+    y: wa.y + wa.height - H,
+    width: W,
+    height: H,
+    show: false,
+    frame: false,
+    transparent: false,
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    focusable: false,
+    backgroundColor: '#fdfbf4',
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  demoBackdropWin.setAlwaysOnTop(true, 'screen-saver');
+  demoBackdropWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  demoBackdropWin.setIgnoreMouseEvents(true, { forward: true });
+  demoBackdropWin.loadURL(`file://${path.join(__dirname, '..', 'renderer', 'demo-backdrop.html')}`);
+  demoBackdropWin.once('ready-to-show', () => demoBackdropWin.showInactive());
 }
 
 /**
