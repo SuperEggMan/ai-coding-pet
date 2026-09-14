@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; img-src data: file:; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <title>位姿检查台</title>
+  <link rel="stylesheet" href="pet.css">
+  <style>
+    /* 检查台自己的版式，跟宠物窗口无关 */
+    html, body { background: #eceff4; cursor: default; }
+    body { padding: 16px 18px 22px; overflow: auto; }
+    h1 { margin: 0 0 3px; font-size: 15px; letter-spacing: .4px; }
+    .hint { margin: 0 0 14px; font-size: 12px; color: #6b7280; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .cell {
+      background: #fff;
+      border: 1px solid rgba(31, 38, 55, .1);
+      border-radius: 10px;
+      border-top: 3px solid var(--cell-accent, #8f9bb3);
+      padding: 6px 8px 8px;
+      text-align: center;
+    }
+    .cell .box { width: 100%; max-width: 180px; margin: 0 auto; aspect-ratio: 1; }
+    .cell .box svg { width: 100%; height: 100%; overflow: visible; }
+    .cell .nm { font-size: 12.5px; font-weight: 700; color: var(--cell-accent, #333); }
+    .cell .id { font-size: 10.5px; color: #9aa3af; font-family: ui-monospace, Menlo, monospace; }
+    .cell .nt { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .tiers { display: flex; gap: 12px; margin-top: 16px; }
+    .tiers .cell { flex: 1; max-width: 176px; }
+  </style>
+</head>
+<body>
+  <h1 id="sheetTitle">位姿检查台</h1>
+  <p class="hint">每格是该状态的稳定位姿（loop 已在跑）。看的是「差异够不够大」，不是分辨率。</p>
+  <div class="grid" id="grid"></div>
+
+  <h1 style="margin-top:18px">请奏三色</h1>
+  <p class="hint">同一位姿，配色按工具危险度分级：破坏性 / 写与执行 / 只读。</p>
+  <div class="tiers" id="tiers"></div>
+
+  <script type="module" src="poses.js"></script>
+</body>
+</html>

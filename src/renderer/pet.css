@@ -1,0 +1,926 @@
+/* ===========================================================
+   透明窗口基线
+   =========================================================== */
+:root {
+  --accent: #8f9bb3;
+  --ink: #1f2637;
+  --paper: #f7f1e3;
+  --bubble-paper: #fffdf4;
+  /* 宠物 = 小孩个头,要明显小于宝盒里的云糯(132),一眼能分出谁是谁。
+     改这里必须同步 windows.js 的 COLLAPSED / EXPANDED / CHAT。 */
+  --stage: 84px;
+  --card-w: 440px;
+  --collapse-ms: 260ms; /* 必须与 windows.js 的 COLLAPSE_ANIM_MS 一致 */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  cursor: default;
+  font: 13px/1.5 -apple-system, "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/*
+  全窗锚定左下角。宠物本体固定在窗口左侧，对话气泡从它头顶正上方长出来——
+  竖直 flex + 左对齐，宠物的屏幕 x 坐标是 root 的左内边距，
+  跟气泡开不开、多高完全没关系，气泡只会往上长，不会把宠物往哪儿推。
+*/
+.root {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* 气泡贴着宠物头顶:尾巴本身就往下探 8px(见 .card::after),
+     这里再留大间距就会看着像两个不相干的东西。要调远近改这一个值。 */
+  gap: 2px;
+  padding: 8px;
+}
+
+/* ===========================================================
+   宠物舞台
+   =========================================================== */
+/*
+  ⚠️ 这里绝对不能加 `-webkit-app-region: drag`。
+  这是"点宠物没反应"排查了一整轮的真凶:macOS 上 drag 区域的 mousedown 会被
+  浏览器进程截去做原生窗口拖拽(performWindowDragWithEvent:),渲染层压根收不到
+  pointerdown/click —— 所以按住能拖(那是原生拖拽在干活)、`sendInputEvent`
+  注入的点击每次都成(注入事件跳过了浏览器侧的 draggable region 命中测试)、
+  宝盒窗口点得动(hub.css 里没有任何 app-region),但真实左键点宠物一次都不进来。
+  宠物的拖动由 pet.js 自己的 pointerdown/move/up 实现(还要靠 pointerup 的
+  屏幕坐标判"拖进宝盒 = 回收"),原生拖拽区反而做不到这件事。
+*/
+.stage {
+  position: relative;
+  width: var(--stage);
+  height: var(--stage);
+  -webkit-app-region: no-drag;
+}
+
+/*
+  折叠态:root 的内边距会在宠物盒子外面留一圈死区,点在那几px 上没反应、
+  悬停也不冒回收按钮。折叠态整窗都是宠物地盘,把 stage 用负边距顶到
+  跟 root 外框齐平,吃掉这圈死区。
+*/
+.root.collapsed .stage {
+  margin: -8px;
+  width: calc(var(--stage) + 16px);
+  height: calc(var(--stage) + 16px);
+}
+
+.svg-host,
+.svg-host svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+
+/* 统一描边。放在这里而不是 SVG 内部，检查台重复注入同一份 SVG 时才不会失效 */
+.svg-host .ol {
+  stroke: #1a1f2e;
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.svg-host .ol-thin {
+  stroke: #1a1f2e;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/*
+  关键：让 transform-origin 用 viewBox 用户单位来算。
+  没有这一行，各图层会绕自己的包围盒中心转，胳膊就不是从肩膀甩出去的。
+*/
+.svg-host svg [data-layer] {
+  transform-box: view-box;
+  will-change: transform, opacity;
+}
+
+/* ---- frames 形态：每状态一张整图（AIGC 资产走这条） ---- */
+.frames-host { position: relative; width: 100%; height: 100%; }
+
+.frames-figure,
+.frames-shadow {
+  position: absolute;
+  inset: 0;
+  /* HTML 元素没有 view-box，转轴用百分比表达；「脚跟」约在底部中线 */
+  transform-origin: 50% 94%;
+  will-change: transform, opacity;
+}
+
+.frames-figure { display: grid; place-items: end center; }
+
+/* 两张图叠在同一格里做交叉淡入淡出，离散图之间才有过渡而不是硬切 */
+.frames-img {
+  grid-area: 1 / 1;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.frames-shadow {
+  transform-origin: 50% 100%;
+  background: radial-gradient(ellipse 38% 7% at 50% 96%, rgba(16, 20, 34, .28), rgba(16, 20, 34, 0) 70%);
+}
+
+/* 各部件的转轴。改这里等于改「骨架」，坐标须与 pet.svg 的几何对齐 */
+.svg-host svg [data-layer="rig"]      { transform-origin: 100px 184px; } /* 脚跟 —— 瘫倒才像倒 */
+.svg-host svg [data-layer="body"]     { transform-origin: 100px 180px; }
+.svg-host svg [data-layer="armL"]     { transform-origin:  68px 126px; } /* 左肩 */
+.svg-host svg [data-layer="armR"]     { transform-origin: 132px 126px; } /* 右肩 */
+.svg-host svg [data-layer="head"]     { transform-origin: 100px 114px; } /* 颈 */
+.svg-host svg [data-layer="hat"]      { transform-origin: 100px  56px; }
+.svg-host svg [data-layer="hatWingL"] { transform-origin:  72px  58px; }
+.svg-host svg [data-layer="hatWingR"] { transform-origin: 128px  58px; }
+.svg-host svg [data-layer="browL"]    { transform-origin:  85px  74px; }
+.svg-host svg [data-layer="browR"]    { transform-origin: 115px  74px; }
+.svg-host svg [data-layer="eyeL"]     { transform-origin:  86px  90px; }
+.svg-host svg [data-layer="eyeR"]     { transform-origin: 114px  90px; }
+.svg-host svg [data-layer="mouth"]    { transform-origin: 100px 103px; }
+.svg-host svg [data-layer="blush"]    { transform-origin: 100px  98px; }
+.svg-host svg [data-layer="scroll"]   { transform-origin: 100px 148px; }
+.svg-host svg [data-layer="seal"]     { transform-origin: 144px 141px; }
+.svg-host svg [data-layer="sweat"]    { transform-origin: 134px  68px; }
+.svg-host svg [data-layer="bang"]     { transform-origin: 152px  44px; }
+.svg-host svg [data-layer="zzz"]      { transform-origin: 152px  40px; }
+.svg-host svg [data-layer="shadow"]   { transform-origin: 100px 186px; }
+.svg-host svg [data-layer="aura"]     { transform-origin: 100px 115px; }
+
+/* 折叠态的状态徽标：一眼看颜色就知道要不要管它 */
+.collapsed-dot {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, .85), 0 1px 4px rgba(0, 0, 0, .3);
+  transition: opacity 200ms linear, transform 200ms var(--ease-out);
+}
+
+/*
+  需要人处理时让徽标脉动。
+  必须限定在折叠态：animation 的关键帧会盖过静态的 opacity:0，
+  不加 .collapsed 限定的话展开时那个点还赖在卡片旁边不走。
+*/
+.root.collapsed[data-needs-human="1"] .collapsed-dot {
+  animation: pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.45); opacity: .65; }
+}
+
+.root:not(.collapsed) .collapsed-dot { opacity: 0; }
+
+/*
+  折叠态的会话身份名牌 —— 回答「这只是哪个会话」,右上那个点回答「要不要管它」。
+
+  几条都是量过才定的,别随手改:
+  ① 底色用**中性墨色**,绝对不要用 var(--accent)。状态色已经吃掉灰蓝/蓝/红/橙/绿/褐
+     六个色区,身份再用彩色,用户分不清哪个色说状态、哪个色说身份
+     (实测:绿名牌配 done 的绿点,两个绿挨着就糊了)。
+  ② 11px 最多放 4 个汉字。实测 1x 真实观感下:11px/4字 是清晰上限,
+     10px/5字 开始糊,9px/6字 完全认不出。所以文本由 pet.js 按视觉宽度截断,
+     这里的 max-width 只是兜底(窗口 100px,overflow:hidden 会硬裁)。
+  ③ pointer-events:none 是必需的:名牌比宠物本体宽,吃了鼠标就等于把热区
+     撑成一个矩形,而 isOverSolid() 靠 elementFromPoint 判实体像素 ——
+     加了这行它会自动跳过名牌,不用去改命中测试白名单。
+*/
+.ident-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  max-width: 88px;
+  padding: 0 5px;
+  border-radius: 7px;
+  background: rgba(31, 38, 55, .82);
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: opacity 160ms linear;
+}
+
+/* 只在折叠态露脸:展开成气泡后抬头已经写着项目名和标题,名牌是重复信息 */
+.root:not(.collapsed) .ident-tag { opacity: 0; }
+
+/* 鼠标压到宠物身上时淡一点,把脚让出来(顺带让回收按钮不被名牌抢视线) */
+.stage:hover .ident-tag { opacity: .35; }
+
+/*
+  收进宝盒小按钮:挂在宠物舞台自己身上(右下角),默认藏起来，
+  鼠标移到宠物身上才冒出来——常驻显示太抢镜，且挡住宠物本体。
+*/
+.dock-btn {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #8fd6b8, #62c09a);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(60, 120, 90, .35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms linear, transform 90ms ease-out;
+  z-index: 7;
+}
+.stage:hover .dock-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.dock-btn:hover { transform: scale(1.12); }
+.dock-btn:active { transform: scale(.92); }
+
+/* ===========================================================
+   对话气泡（第三档：会话面板 / 第二档：状态卡）
+   桌宠当主界面的核心 —— 读全文、发指令、就地批奏都在这里。
+   两档都是「气泡」：圆角纸色底 + 左下侧尾巴指向宠物头部。
+   =========================================================== */
+.chat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 580px;
+  height: 400px;
+  border-radius: 22px;
+  background: var(--bubble-paper);
+  border: 1px solid rgba(31, 38, 55, .15);
+  border-left: 4px solid var(--accent);
+  box-shadow: 0 16px 44px rgba(20, 26, 40, .28), 0 2px 8px rgba(20, 26, 40, .12);
+  overflow: visible;
+  -webkit-app-region: no-drag;
+
+  transform-origin: left bottom;
+  transition:
+    opacity var(--collapse-ms) linear,
+    transform var(--collapse-ms) var(--ease-out);
+}
+
+/* 会话面板的消息滚动区自己收圆角，外层气泡已不裁切 */
+.stream { border-radius: 0 0 16px 16px; }
+
+.root:not([data-view="chat"]) .chat {
+  opacity: 0;
+  transform: translateY(18px) scale(.94);
+  pointer-events: none;
+  position: absolute;
+  left: 8px;
+  bottom: calc(var(--stage) + 8px);
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(31, 38, 55, .1);
+  /* 拖标题栏挪窗口，和普通窗口的直觉一致 */
+  -webkit-app-region: drag;
+}
+.chat-head > * { -webkit-app-region: no-drag; }
+
+.chat-state {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.mode-sel {
+  flex: none;
+  max-width: 104px;
+  padding: 2px 4px;
+  border: 1px solid rgba(31, 38, 55, .18);
+  border-radius: 5px;
+  background: #fff;
+  color: #4a4535;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+/* ---- 消息流 ---- */
+.stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.stream::-webkit-scrollbar { width: 7px; }
+.stream::-webkit-scrollbar-thumb {
+  background: rgba(31, 38, 55, .2);
+  border-radius: 4px;
+}
+
+.msg {
+  /* flex-shrink:0 是必需的,不是保险:.stream 是 column flex,消息堆多了以后
+     flex 默认会把每个子项「垂直压扁」来硬塞进容器高度(压扁优先于出滚动条),
+     结果每条消息被压成半高、文字被裁成一条糊带(尤其等宽的 tool / tool_result)。
+     锁死不许收缩,超出的部分才交给 .stream 的 overflow-y 滚动。 */
+  flex: 0 0 auto;
+  max-width: 92%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: msgIn 180ms var(--ease-out);
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.msg-user {
+  align-self: flex-end;
+  background: var(--ink);
+  color: #f4f1e8;
+}
+
+.msg-assistant {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid rgba(31, 38, 55, .1);
+}
+
+/* 思考：压暗缩小，能看但不抢正文 */
+.msg-thinking {
+  align-self: flex-start;
+  max-width: 96%;
+  padding: 5px 8px;
+  background: rgba(31, 38, 55, .045);
+  color: #6f6a5c;
+  font-size: 11.5px;
+  font-style: italic;
+  border-left: 2px solid rgba(31, 38, 55, .16);
+  border-radius: 0 7px 7px 0;
+}
+
+/* 工具调用：等宽单行，扫一眼知道它在动什么 */
+.msg-tool {
+  align-self: stretch;
+  max-width: 100%;
+  padding: 5px 8px;
+  background: rgba(63, 127, 191, .09);
+  border-left: 2px solid #3f7fbf;
+  border-radius: 0 7px 7px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #2d4a68;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+  危险度三色：左边框直接标出这一步有多重。
+  判据是主进程 states.js 的 classifyGrant（跟「请奏」用的是同一份规则，
+  不另写一套，否则两边会漂）。这里**只是着色，不拦任何东西** ——
+  拦是「请奏」那条路（PreToolUse 阻塞），跟这个无关。
+  蓝档不写规则：上面 .msg-tool 的默认样式就是蓝，避免重复声明。
+*/
+.msg-tool[data-tier="amber"] {
+  background: rgba(224, 139, 31, .1);
+  border-left-color: #e08b1f;
+  color: #6d4a12;
+}
+.msg-tool[data-tier="red"] {
+  background: rgba(215, 56, 43, .1);
+  border-left-color: #d7382b;
+  border-left-width: 3px;
+  color: #8f2118;
+  font-weight: 600;
+}
+
+.msg-tool_result {
+  align-self: stretch;
+  max-width: 100%;
+  padding: 5px 8px;
+  background: rgba(31, 38, 55, .05);
+  border-radius: 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: #55503f;
+  max-height: 5.4em;
+  overflow: hidden;
+}
+.msg-tool_result[data-ok="0"] {
+  background: rgba(179, 39, 28, .08);
+  color: #8f2118;
+}
+
+.msg-error,
+.msg-notice,
+.msg-system {
+  align-self: center;
+  max-width: 96%;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  background: rgba(31, 38, 55, .06);
+  color: #7a7565;
+  white-space: normal;
+}
+.msg-error { background: rgba(179, 39, 28, .1); color: #a2261c; font-weight: 600; }
+
+/* 流式生成中：末尾一个呼吸的光标 */
+.msg[data-live="1"]::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  opacity: .55;
+  animation: caret 1s steps(2, start) infinite;
+}
+@keyframes caret { 0%, 100% { opacity: .55; } 50% { opacity: 0; } }
+
+.stream-empty {
+  margin: auto;
+  padding: 18px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #9a9483;
+  line-height: 1.7;
+}
+/* 空态里的标题独占一行:b 和 span 默认都是行内,不这样会挤成一坨 */
+.stream-empty b { display: block; margin-bottom: 4px; color: #6f6a5c; }
+.stream-empty span { display: block; }
+
+/* 等待客户端接入的会话提示 */
+.passive-note b { display: block; font-size: 13px; color: #6f6a5c; margin-bottom: 4px; }
+.passive-hint {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+/* ---- 就地批奏 ---- */
+.chat-pending {
+  flex: none;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(31, 38, 55, .1);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.cp-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+.cp-label { font-size: 12px; font-weight: 700; color: var(--accent); }
+.cp-reason { font-size: 11px; font-weight: 600; color: var(--accent); opacity: .85; }
+.chat-pending .pending-summary { max-height: 3.9em; }
+.chat-pending .action-bar { margin-top: 7px; }
+
+/*
+  ---- 输入区 ----
+  不塞在会话面板里面,单独悬浮在宠物身边:
+  面板(在宠物头顶上方)负责"看"，这条负责"说"，宠物才是真正在听你吩咐的那个。
+  面板占了宠物正上方，输入框就贴宠物右边、跟宠物齐底，两者不会抢位置。
+  只有会话面板(chat)开着时才用得上。
+*/
+.composer {
+  position: absolute;
+  left: calc(var(--stage) + 8px);
+  bottom: 0; /* 跟宠物齐底 */
+  width: 220px;
+  display: none;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 9px;
+  border-radius: 14px;
+  background: var(--bubble-paper);
+  border: 1px solid rgba(31, 38, 55, .15);
+  box-shadow: 0 6px 16px rgba(20, 26, 40, .16);
+  -webkit-app-region: no-drag;
+  z-index: 5;
+}
+.root[data-view="chat"] .composer { display: flex; }
+.composer-actions { display: flex; gap: 5px; }
+
+.composer-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  max-height: 108px;
+  padding: 7px 9px;
+  border: 1px solid rgba(31, 38, 55, .18);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+}
+.composer-input:focus { border-color: var(--accent); }
+
+/*
+  提高一级特异性。.btn 的 flex:1 在文件里排在后面，
+  单类选择器打不过它，会把「发」拉成半个输入框宽。
+*/
+.composer-actions .composer-btn {
+  flex: 0 0 auto;
+  min-width: 40px;
+  padding: 8px 10px;
+}
+
+/* ===========================================================
+   状态气泡（原奏折卡片）
+   =========================================================== */
+.card {
+  position: relative;
+  width: var(--card-w);
+  padding: 12px 13px 11px;
+  border-radius: 18px;
+  background: var(--bubble-paper);
+  border: 1px solid rgba(31, 38, 55, .14);
+  /* 左侧一道朱红：奏折的天头 */
+  border-left: 4px solid var(--accent);
+  box-shadow: 0 10px 30px rgba(20, 26, 40, .22), 0 2px 6px rgba(20, 26, 40, .12);
+  -webkit-app-region: no-drag;
+
+  transform-origin: left bottom;
+  transition:
+    opacity var(--collapse-ms) linear,
+    transform var(--collapse-ms) var(--ease-out);
+}
+
+/* 气泡尾巴：从气泡底边探出去，指向正下方的宠物头顶。卡片与会话面板共用 */
+.card::after,
+.chat::after {
+  content: '';
+  position: absolute;
+  left: 46px;
+  bottom: -8px;
+  width: 15px;
+  height: 15px;
+  background: var(--bubble-paper);
+  border-right: 1px solid rgba(31, 38, 55, .15);
+  border-bottom: 1px solid rgba(31, 38, 55, .15);
+  border-radius: 0 0 4px 0;
+  transform: rotate(45deg);
+}
+
+/*
+  只有 data-view="card" 时卡片才占布局。
+  其余档位把它抽出文档流并缩回宠物身上，宠物的屏幕位置才不会被顶走。
+*/
+.root:not([data-view="card"]) .card {
+  opacity: 0;
+  transform: translateY(14px) scale(.9);
+  pointer-events: none;
+  position: absolute;
+  left: 8px;
+  bottom: calc(var(--stage) + 8px);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tier-badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  letter-spacing: .5px;
+}
+
+.project {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent {
+  flex: 1;
+  font-size: 11px;
+  color: #8a8577;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #8a8577;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:hover { background: rgba(31, 38, 55, .08); color: var(--ink); }
+
+.title {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  color: #4a4535;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* agent 自己写的那句话。给它两行，因为它是唯一一直在变的内容 */
+.live-line {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #2f2b21;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.9em;
+}
+
+.pending {
+  margin: 0 0 8px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: rgba(31, 38, 55, .05);
+  border: 1px solid rgba(31, 38, 55, .09);
+}
+
+.pending-summary {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #2f2b21;
+  word-break: break-all;
+  max-height: 3.9em;
+  overflow: hidden;
+}
+
+/* 命中破坏性特征时把原文摆出来，让你知道我为什么判成急奏 */
+.pending-reason {
+  margin: 5px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #8a8577;
+}
+
+.state-label { font-weight: 700; color: var(--accent); }
+.dot { opacity: .45; }
+.meta { font-variant-numeric: tabular-nums; }
+
+.action-bar {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+/* 兜底:审批按钮只在真正的请奏(awaiting_grant)态出现,其他状态一律藏 */
+.root:not([data-state="awaiting_grant"]) #actionBar,
+.root:not([data-state="awaiting_grant"]) #chatPending { display: none !important; }
+.root[data-state="awaiting_grant"] #chatPending { display: flex; flex-direction: column; }
+
+.btn {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid rgba(31, 38, 55, .16);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 90ms var(--ease-out), background 120ms linear;
+}
+.btn:hover  { background: #f0ece0; }
+.btn:active { transform: scale(.96); }
+
+.btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+.btn-danger { color: #b3271c; border-color: rgba(179, 39, 28, .3); }
+.btn-danger:hover { background: #fdecea; }
+
+/* 永准两步确认:第一下按进去的武装态,醒目但不至于当成已生效 */
+.btn.always-arm {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  animation: alwaysPulse 1s ease-in-out infinite;
+}
+.btn.always-arm:hover { filter: brightness(1.08); background: var(--accent); }
+
+@keyframes alwaysPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+/*
+  红档（破坏性操作）：默认动作翻成「驳回」。
+  蓝/黄档默认高亮准奏；红档再把准奏高亮就是鼓励放行危险操作，反过来。
+*/
+.root[data-tier="red"] .btn-primary,
+.root[data-tier="red"] .btn-primary:hover {
+  background: #fff;
+  border-color: rgba(179, 39, 28, .3);
+  color: var(--ink);
+}
+.root[data-tier="red"] .btn-danger {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+.root[data-tier="red"] .btn-danger:hover { filter: brightness(1.08); background: var(--accent); }
+
+/* 结束会话:唯一不可恢复的键,平时低调,进入确认态才变红扩宽 */
+.icon-btn-danger { color: #b3271c; }
+.icon-btn-danger:hover { background: rgba(179, 39, 28, .1); }
+.icon-btn-danger.arming {
+  width: auto;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #b3271c;
+  color: #fff;
+}
+
+/* ===========================================================
+   只能看的会话(旁路:kiro / codex)
+   桌宠没有内核接指令,所以把所有"假的可交互"整块撤掉:
+   输入框、权限模式下拉。留着它们只会让人以为敲进去有用。
+   =========================================================== */
+.root[data-observe="1"] .composer { display: none !important; }
+.root[data-observe="1"] .mode-sel { display: none; }
+.root[data-observe="1"][data-view="chat"] .observe-bar { display: flex; }
+
+.observe-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid rgba(31, 38, 55, .08);
+}
+.observe-text { flex: 1; min-width: 0; font-size: 11.5px; color: var(--ash); }
+.observe-btn { flex: none; font-size: 11.5px; }
+
+/* 排队提示:同时只有一只能展开,后面还有谁在等要说出来 */
+.queue-hint {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* 瘫：完全的状态，头上不挂任何气泡 */
+.root[data-state="limp"] .card,
+.root[data-state="limp"] .chat { display: none; }
+
+.btn-quiet { flex: 0 0 auto; padding: 6px 8px; color: #8a8577; font-weight: 500; }
+
+/* 宠物出生:像从一朵云里冒出来 */
+.root.spawn .stage {
+  animation: petSpawn .6s cubic-bezier(.2, 1.5, .4, 1);
+}
+@keyframes petSpawn {
+  0%   { transform: scale(.1); opacity: 0; }
+  55%  { opacity: 1; }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+/* ===========================================================
+   待命小动作:整只宠物(含影子)的整体姿态,随机演一小段
+   =========================================================== */
+.stage.g-hop { animation: gHop .6s ease-in-out; }
+@keyframes gHop {
+  0%, 100% { transform: translateY(0); }
+  35%      { transform: translateY(-9px) scale(1.03, .97); }
+  60%      { transform: translateY(0)  scale(.99, 1.01); }
+  75%      { transform: translateY(-3px); }
+}
+
+.stage.g-sway { animation: gSway .9s ease-in-out; }
+@keyframes gSway {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-4deg) translateX(-2px); }
+  60%      { transform: rotate(3.5deg) translateX(2px); }
+}
+
+.stage.g-stretch { animation: gStretch .8s ease-in-out; }
+@keyframes gStretch {
+  0%, 100% { transform: scale(1); }
+  30%      { transform: translateY(-3px) scale(1.02, 1.06); }
+  55%      { transform: translateY(-1px) scale(1.01, 1.04); }
+}
+
+.stage.g-peek { animation: gPeek .8s ease-in-out; }
+@keyframes gPeek {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  30%      { transform: translateX(-4px) rotate(-3deg); }
+  70%      { transform: translateX(4px)  rotate(3deg); }
+}
+
+.stage.g-droop { animation: gDroop 1.3s ease-in-out; }
+@keyframes gDroop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30%      { transform: translateY(3px)  scale(1, .965); }
+  60%      { transform: translateY(4.5px) scale(.99, .955); }
+}
+
+/* ===========================================================
+   回窝睡觉:拖进宝盒 / 点回收时,宠物先蹲一下,再缩成一团钻回窝里。
+   必须放在待命小动作之后 —— 它们同为 `.stage.xxx` 一级特异性,靠顺序取胜。
+   窗口本体朝宝盒平移那一段在 pet.js 里(CSS 动不了窗口)。
+   =========================================================== */
+.stage.go-home { animation: goHome 480ms cubic-bezier(.4, 0, .7, 1) forwards; }
+@keyframes goHome {
+  0%   { transform: scale(1)    rotate(0deg);   opacity: 1; }
+  30%  { transform: scale(1.07) rotate(-7deg);  opacity: 1; } /* 先蹲一下攒劲 */
+  100% { transform: scale(.16)  rotate(16deg);  opacity: 0; }
+}
+/* 打两个呵欠 */
+.stage.go-home::after {
+  content: 'z z z';
+  position: absolute;
+  right: -4px;
+  top: -8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #98a3b8;
+  animation: zzzFloat 480ms ease-out forwards;
+}
+@keyframes zzzFloat {
+  0%   { opacity: 0; transform: translateY(6px)   scale(.7); }
+  45%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-20px) scale(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root.spawn .stage { animation: none; }
+  .stage.g-hop, .stage.g-sway, .stage.g-stretch,
+  .stage.g-peek, .stage.g-droop { animation: none !important; }
+  .stage.go-home, .stage.go-home::after { animation: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsed-dot { animation: none !important; }
+  .root.spawn .stage { animation: none; }
+}

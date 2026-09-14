@@ -1,0 +1,196 @@
+<svg id="petRoot" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <!--
+    准奏盖章版 · 分层矢量角色（第二版）
+
+    图层 id 与第一版完全一致，所以 anim.js / skin.json / pet.css 的骨架定义不用动。
+    第二版只改「画」，四条工艺修正：
+      1. 统一深色描边 —— 平色块直接拼是廉价感的主要来源
+      2. 头身比放大到 chibi 该有的比例（头 r34，身高 66）
+      3. 补结构阴影与轮廓高光，而不是只靠渐变
+      4. 补脚，让人物落地；乌纱帽做出真实的帽胎+帽檐+帽翅三段
+
+    所有部件位姿仍由 anim.js 通过 CSS transform 驱动，SVG 本身不含动画。
+  -->
+  <defs>
+    <linearGradient id="zzRobe" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0"   stop-color="#4a5a8c"/>
+      <stop offset="0.55" stop-color="#36446c"/>
+      <stop offset="1"   stop-color="#28324f"/>
+    </linearGradient>
+    <linearGradient id="zzSleeve" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b6d9f"/>
+      <stop offset="1" stop-color="#3d4b74"/>
+    </linearGradient>
+    <linearGradient id="zzSkin" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#fdeedb"/>
+      <stop offset="1" stop-color="#f2d5b4"/>
+    </linearGradient>
+    <linearGradient id="zzPaper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf4"/>
+      <stop offset="1" stop-color="#ecdcb6"/>
+    </linearGradient>
+    <linearGradient id="zzHat" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#2c3348"/>
+      <stop offset="1" stop-color="#15192a"/>
+    </linearGradient>
+    <radialGradient id="zzGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0"    stop-color="#ffcf5c" stop-opacity="0.5"/>
+      <stop offset="0.65" stop-color="#ffcf5c" stop-opacity="0.16"/>
+      <stop offset="1"    stop-color="#ffcf5c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!--
+    描边样式统一放在 pet.css 的 .svg-host .ol / .ol-thin 里。
+    不写在这个 SVG 内部的 <style> 里，是因为检查台会把同一份 SVG 注入多次，
+    内部选择器一旦依赖 #petRoot 就会因为去重 id 而失效。
+  -->
+
+  <!-- 地面投影 -->
+  <g id="lShadow" data-layer="shadow">
+    <ellipse cx="100" cy="186" rx="42" ry="6" fill="#101422" opacity="0.2"/>
+  </g>
+
+  <!-- 状态光环：仅在需要人处理时亮起 -->
+  <g id="lAura" data-layer="aura" opacity="0">
+    <circle cx="100" cy="115" r="84" fill="url(#zzGlow)"/>
+  </g>
+
+  <!-- 全身容器：呼吸、跳跃、瘫倒都作用在这一层 -->
+  <g id="lRig" data-layer="rig">
+
+    <!-- ===== 身体 ===== -->
+    <g id="lBody" data-layer="body">
+      <!-- 脚：先画，被袍角压住一部分，才有前后关系 -->
+      <path class="ol" d="M82 170h13v10a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5z" fill="#20263a"/>
+      <path class="ol" d="M105 170h13v10a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5z" fill="#20263a"/>
+
+      <!-- 官袍 -->
+      <path class="ol"
+            d="M100 112c-15 0-27 4-33 11l-9 55c0 5 19 8 42 8s42-3 42-8l-9-55c-6-7-18-11-33-11z"
+            fill="url(#zzRobe)"/>
+      <!-- 结构阴影：袍摆下缘压暗，不是靠渐变糊过去 -->
+      <path d="M59 156l-1 22c0 5 19 8 42 8s42-3 42-8l-1-22z" fill="#141a2b" opacity="0.22"/>
+      <!-- 袍身左侧高光 -->
+      <path d="M74 124c-4 4-6 14-7 28l7 1c1-14 3-24 7-29z" fill="#8fa0cf" opacity="0.3"/>
+
+      <!-- 补子（胸前方形纹样） -->
+      <rect class="ol-thin" x="86" y="136" width="28" height="26" rx="4" fill="#c8402f"/>
+      <path d="M92 149h16M100 142v14" stroke="#f8dca8" stroke-width="2.4" stroke-linecap="round"/>
+
+      <!-- 交领 -->
+      <path class="ol-thin" d="M100 112l-14 11 14 10 14-10-14-11z" fill="#f6f3ec"/>
+      <path d="M100 112l-14 11 14 10" fill="none" stroke="#c8402f" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- ===== 双臂 ===== -->
+    <!-- 袖色必须明显亮于袍身并描边，否则八个状态的手臂动作全白做 -->
+    <g id="lArmL" data-layer="armL">
+      <path class="ol" d="M68 124c-13 5-19 18-17 33 1 8 9 11 14 6 5-5 6-15 10-24z" fill="url(#zzSleeve)"/>
+      <path class="ol-thin" d="M50 152l18-4 2 8-18 4z" fill="#c8402f"/>
+      <circle class="ol-thin" cx="57" cy="163" r="8" fill="url(#zzSkin)"/>
+    </g>
+    <g id="lArmR" data-layer="armR">
+      <path class="ol" d="M132 124c13 5 19 18 17 33-1 8-9 11-14 6-5-5-6-15-10-24z" fill="url(#zzSleeve)"/>
+      <path class="ol-thin" d="M150 152l-18-4-2 8 18 4z" fill="#c8402f"/>
+      <circle class="ol-thin" cx="143" cy="163" r="8" fill="url(#zzSkin)"/>
+    </g>
+
+    <!-- ===== 头 ===== -->
+    <g id="lHead" data-layer="head">
+      <!-- 耳 -->
+      <ellipse class="ol-thin" cx="66" cy="88" rx="5.5" ry="8" fill="#eecda9"/>
+      <ellipse class="ol-thin" cx="134" cy="88" rx="5.5" ry="8" fill="#eecda9"/>
+
+      <circle class="ol" cx="100" cy="84" r="34" fill="url(#zzSkin)"/>
+      <!-- 下颌阴影 + 左上轮廓高光，脸才不是一个圆饼 -->
+      <path d="M70 96a34 34 0 0 0 60 0 34 34 0 0 1-60 0z" fill="#d9ab84" opacity="0.28"/>
+      <path d="M78 66a34 34 0 0 1 26-14 30 30 0 0 0-26 20z" fill="#fff" opacity="0.35"/>
+
+      <!-- 乌纱帽：帽胎 + 帽檐 + 帽翅 三段 -->
+      <g id="lHat" data-layer="hat">
+        <path class="ol" d="M70 56c0-17 13-26 30-26s30 9 30 26z" fill="url(#zzHat)"/>
+        <path d="M84 36c-6 4-10 11-11 19l6 1c1-8 3-15 8-19z" fill="#6d7899" opacity="0.5"/>
+        <rect class="ol" x="63" y="52" width="74" height="12" rx="6" fill="#252c40"/>
+        <ellipse id="lHatWingL" data-layer="hatWingL" class="ol-thin"
+                 cx="55" cy="58" rx="17" ry="6" fill="#1c2233"/>
+        <ellipse id="lHatWingR" data-layer="hatWingR" class="ol-thin"
+                 cx="145" cy="58" rx="17" ry="6" fill="#1c2233"/>
+      </g>
+
+      <!-- 眉：表情差异主要靠它，不靠眼睛 -->
+      <g id="lBrowL" data-layer="browL">
+        <path d="M76 74q10-6 19-1" fill="none" stroke="#3b2b22" stroke-width="3.2" stroke-linecap="round"/>
+      </g>
+      <g id="lBrowR" data-layer="browR">
+        <path d="M105 73q9-5 19 1" fill="none" stroke="#3b2b22" stroke-width="3.2" stroke-linecap="round"/>
+      </g>
+
+      <!-- 眼：闭眼靠 scaleY 压扁，不换图形 -->
+      <g id="lEyeL" data-layer="eyeL">
+        <ellipse cx="86" cy="90" rx="6" ry="7.6" fill="#241d1a"/>
+        <circle cx="88.4" cy="87" r="2.2" fill="#fff" opacity="0.95"/>
+        <circle cx="84" cy="93.5" r="1.1" fill="#fff" opacity="0.5"/>
+      </g>
+      <g id="lEyeR" data-layer="eyeR">
+        <ellipse cx="114" cy="90" rx="6" ry="7.6" fill="#241d1a"/>
+        <circle cx="116.4" cy="87" r="2.2" fill="#fff" opacity="0.95"/>
+        <circle cx="112" cy="93.5" r="1.1" fill="#fff" opacity="0.5"/>
+      </g>
+
+      <g id="lMouth" data-layer="mouth">
+        <path d="M92 103q8 7 16 0" fill="none" stroke="#8c4736" stroke-width="2.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- 腮红：常态极淡，复奏时被 opacity 提亮 -->
+      <g id="lBlush" data-layer="blush" opacity="0">
+        <ellipse cx="76" cy="98" rx="7" ry="4" fill="#e8806f" opacity="0.62"/>
+        <ellipse cx="124" cy="98" rx="7" ry="4" fill="#e8806f" opacity="0.62"/>
+      </g>
+    </g>
+
+    <!--
+      奏折与大印画在头之后。
+      「请奏」要把折子端到胸前偏上，若排在 lHead 之前会被头整块盖住（第一版踩过这个坑）。
+    -->
+    <g id="lScroll" data-layer="scroll" opacity="0">
+      <g transform="rotate(-7 100 148)">
+        <rect class="ol-thin" x="72" y="134" width="56" height="30" rx="3" fill="url(#zzPaper)"/>
+        <rect class="ol-thin" x="72" y="134" width="56" height="7" rx="3" fill="#c8402f"/>
+        <path d="M80 150h40M80 157h28" stroke="#9c8a67" stroke-width="1.9" stroke-linecap="round" opacity="0.8"/>
+        <!-- 两端卷轴，纸片才像折子 -->
+        <rect class="ol-thin" x="68" y="130" width="7" height="38" rx="3.5" fill="#b8875a"/>
+        <rect class="ol-thin" x="125" y="130" width="7" height="38" rx="3.5" fill="#b8875a"/>
+      </g>
+    </g>
+
+    <!-- 朱红大印：复奏时整只压下去盖章 -->
+    <g id="lSeal" data-layer="seal" opacity="0">
+      <rect class="ol-thin" x="137" y="112" width="15" height="16" rx="3" fill="#9e231a"/>
+      <rect class="ol" x="129" y="126" width="31" height="31" rx="4" fill="#d7382b"/>
+      <rect x="133" y="130" width="23" height="23" rx="2" fill="none" stroke="#ffe9e4" stroke-width="2"/>
+      <text x="144.5" y="147.5" font-size="15" font-weight="700" text-anchor="middle"
+            fill="#ffe9e4" font-family="'Songti SC','SimSun',serif">准</text>
+    </g>
+
+    <!-- 汗滴：久候未答时出现 -->
+    <g id="lSweat" data-layer="sweat" opacity="0">
+      <path class="ol-thin" d="M134 62c0 0 7 9 7 14a7 7 0 0 1-14 0c0-5 7-14 7-14z" fill="#89cdef"/>
+    </g>
+
+    <!-- 惊叹气泡：请奏瞬间弹一下 -->
+    <g id="lBang" data-layer="bang" opacity="0">
+      <circle class="ol" cx="152" cy="44" r="15" fill="#fff"/>
+      <path d="M152 35v11" stroke="#d7382b" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="152" cy="52.5" r="2.1" fill="#d7382b"/>
+    </g>
+
+    <!-- 睡眠符号：瘫状态用 -->
+    <g id="lZzz" data-layer="zzz" opacity="0">
+      <text x="146" y="46" font-size="18" font-weight="700" fill="#8f9bb3"
+            font-family="ui-sans-serif,system-ui">z</text>
+      <text x="160" y="32" font-size="13" font-weight="700" fill="#8f9bb3"
+            font-family="ui-sans-serif,system-ui">z</text>
+    </g>
+  </g>
+</svg>

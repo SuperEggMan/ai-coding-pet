@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- 占位图：瘫（limp）。真图覆盖同名文件即可。透明底，脚底对齐 y=963 -->
+  <!-- 基准线参考，接真实资产时应删掉 -->
+  <line x1="0" y1="963" x2="1024" y2="963" stroke="#000" stroke-opacity="0.12" stroke-dasharray="12 12" stroke-width="3"/>
+  <line x1="512" y1="0" x2="512" y2="1024" stroke="#000" stroke-opacity="0.08" stroke-dasharray="12 12" stroke-width="3"/>
+  <g transform="rotate(-74 512 963)">
+      <rect x="358.5" y="483.6" width="307" height="479.4" rx="92.1" fill="#8f9bb3"/>
+      <circle cx="512" cy="331.6" r="152" fill="#8f9bb3"/>
+    </g>
+  <text x="512" y="1009" font-size="44" font-weight="700" text-anchor="middle"
+        fill="#8f9bb3" font-family="'PingFang SC',sans-serif">瘫</text>
+</svg>

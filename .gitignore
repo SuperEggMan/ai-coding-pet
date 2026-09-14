@@ -1,0 +1,18 @@
+# 依赖与构建产物（体积大、可重建，不进仓）
+node_modules/
+release/
+build/*.icns
+build/.icon-icns/
+
+# 运行时缓存 / 本地状态
+*.log
+.DS_Store
+**/.DS_Store
+
+# 编辑器
+.idea/
+.vscode/
+
+# 误建的空文件 / 临时产物
+=
+*.tmp

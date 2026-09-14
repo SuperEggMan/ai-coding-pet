@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <!--
+    style-src 需要 'self' 才能加载 pet.css；'unsafe-inline' 给内联的 SVG 样式留口。
+    img-src 放开 file: 是为了 frames 形态的皮肤能加载本地整图（AIGC 出的资产）。
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; img-src data: file:; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <title>pet</title>
+  <link rel="stylesheet" href="pet.css">
+</head>
+<body>
+  <!--
+    三档视图共用一个窗口，锚在右下角：
+      collapsed 只有宠物 / card 状态卡 / chat 会话面板
+    宠物本体的屏幕位置在三档之间保持不动。
+  -->
+  <div id="root" class="root" data-view="collapsed" data-state="idle">
+
+    <!-- ============ 第三档：会话面板（桌宠当主界面时干活的地方） ============ -->
+    <section id="chat" class="chat">
+      <header class="chat-head">
+        <span id="chatTierBadge" class="tier-badge" hidden></span>
+        <span id="chatProject" class="project">—</span>
+        <span id="chatState" class="chat-state">待命</span>
+        <select id="modeSel" class="mode-sel" title="权限模式">
+          <option value="default">逐事请奏</option>
+          <option value="acceptEdits">改文件免奏</option>
+          <option value="plan">先议后行</option>
+          <option value="bypassPermissions">一概免奏</option>
+        </select>
+        <button id="chatToCard" class="icon-btn" title="收成气泡">▾</button>
+        <button id="dockChat" class="icon-btn dock-in" title="收进宝盒（会话继续,随时叫回）">⤵</button>
+        <!-- 只有这一个键是真的结束会话:放在「干活的那一档」,并且两步确认 -->
+        <button id="btnEnd" class="icon-btn icon-btn-danger" title="结束会话（不可恢复）">×</button>
+      </header>
+
+      <div id="stream" class="stream" aria-live="polite"></div>
+
+      <!--
+        只能看的会话(kiro/codex 这类旁路):桌宠这边没有内核接指令,
+        输入框整块撤掉,换成这条说明 + 一个跳回客户端的按钮。
+        留一个"假的可交互"输入框比没有更糟 —— 敲进去无人接,还得自己猜为什么。
+      -->
+      <div id="observeBar" class="observe-bar" hidden>
+        <span id="observeText" class="observe-text"></span>
+        <button id="btnReveal" class="btn btn-quiet observe-btn" type="button" hidden></button>
+      </div>
+
+      <!-- 请奏 / 请择：就地插在消息流下方，不用跳去别处批 -->
+      <div id="chatPending" class="chat-pending" hidden>
+        <div class="cp-head">
+          <span id="cpLabel" class="cp-label">请奏</span>
+          <span id="cpReason" class="cp-reason" hidden></span>
+        </div>
+        <code id="cpSummary" class="pending-summary"></code>
+        <div id="cpGrant" class="action-bar">
+          <button class="btn btn-primary" data-decision="allow"></button>
+          <button class="btn" data-decision="always"></button>
+          <button class="btn btn-danger" data-decision="deny"></button>
+        </div>
+        <div id="cpChoice" class="choices" hidden></div>
+      </div>
+    </section>
+
+    <!-- 输入框固定悬浮在宠物头顶正上方(不是面板里),吩咐话就近喊给它听 -->
+    <footer id="composer" class="composer">
+      <textarea id="input" class="composer-input" rows="1"
+                placeholder="在这里吩咐…"
+                title="Enter 发送，Shift+Enter 换行"></textarea>
+      <div class="composer-actions">
+        <button id="btnSend" class="btn btn-primary composer-btn">发</button>
+        <button id="btnStop" class="btn btn-quiet composer-btn" title="打断当前这轮">停</button>
+      </div>
+    </footer>
+
+    <!-- ============ 第二档：状态卡（看一眼就走） ============ -->
+    <section id="card" class="card" aria-live="polite">
+      <header class="card-head">
+        <span id="tierBadge" class="tier-badge" hidden></span>
+        <span id="project" class="project">—</span>
+        <span id="agent" class="agent"></span>
+        <button id="btnToChat" class="icon-btn" title="展开会话面板">▴</button>
+        <button id="dockCard" class="icon-btn dock-in" title="收进宝盒（会话继续,随时叫回）">⤵</button>
+        <button id="btnClose" class="icon-btn" title="收起气泡">⌄</button>
+      </header>
+
+      <p id="title" class="title"></p>
+      <p id="liveLine" class="live-line"></p>
+
+      <div id="pendingBox" class="pending" hidden>
+        <code id="pendingSummary" class="pending-summary"></code>
+        <p id="pendingReason" class="pending-reason" hidden></p>
+      </div>
+
+      <div id="choiceBox" class="choices" hidden></div>
+
+      <footer class="card-foot">
+        <span id="stateLabel" class="state-label">待命</span>
+        <span class="dot">·</span>
+        <span id="model" class="meta">—</span>
+        <span class="dot">·</span>
+        <span id="elapsed" class="meta">0s</span>
+        <span class="dot">·</span>
+        <span id="actions" class="meta">0 动作</span>
+        <!-- 同时只有一只能展开,别让排在后面等批的那几只悄无声息 -->
+        <span id="queueHint" class="queue-hint" hidden></span>
+      </footer>
+
+      <div id="actionBar" class="action-bar" hidden>
+        <button class="btn btn-primary" data-decision="allow"></button>
+        <button class="btn"             data-decision="always"></button>
+        <button class="btn btn-danger"  data-decision="deny"></button>
+      </div>
+    </section>
+
+    <!-- ============ 第一档：宠物本体 ============ -->
+    <div id="stage" class="stage">
+      <div id="svgHost" class="svg-host"></div>
+      <span id="collapsedDot" class="collapsed-dot"></span>
+      <!-- 会话身份名牌:折叠态一眼认出这只代表哪个会话(不是哪个状态)。
+           只在桌面上不止一只宠物时才出现 —— 独苗时压根没有"分不清谁是谁"的问题。 -->
+      <span id="identTag" class="ident-tag" hidden></span>
+      <!-- 收进宝盒:钉在宠物身上,默认隐藏,鼠标移到宠物上才冒出来 -->
+      <button id="dockBtn" class="dock-btn" type="button" title="收进宝盒（会话继续,随时叫回）">⤵</button>
+    </div>
+
+  </div>
+
+  <script type="module" src="pet.js"></script>
+</body>
+</html>

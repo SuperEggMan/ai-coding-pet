@@ -1,0 +1,276 @@
+/* ===========================================================
+   开张宝盒:一朵软云 + 云糯立绘(用户验收过的图,不自画脸)
+   =========================================================== */
+:root {
+  --ink: #3a3f52;
+  --ash: #9aa0ad;
+  --mint: #8fd6b8;
+  --mint-d: #62c09a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font: 13px/1.4 -apple-system, "PingFang SC", system-ui, sans-serif;
+  color: var(--ink);
+  user-select: none;
+  cursor: pointer;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hub {
+  position: fixed;
+  left: 8px;
+  bottom: 4px;
+}
+
+/* ---------------- 云糯本体(无云,直接立着) ----------------
+   常态收小(96),hover / 菜单开时放大回 132。窗口本身按放大态(132)留够,
+   云糯靠 transform-origin 钉在「左下角」——那正是主进程 HUB_MASCOT 锚住的
+   云糯脚下+左缘那条基准线,放大只往右上方向长,脚下线和左缘不动,
+   拖回收热区(hubMascotRect,按常态 96 算)和宠物排位锚点都不会跟着跳。
+   ⚠️ 改这里的 96 / 132 必须同步 main.js 的 HUB_MASCOT.size(常态)与
+   HUB_BOX(放大态窗口大小)。 */
+.box {
+  position: relative;
+  /* 窗口/占位按放大态留够,免得 hover scale 时被窗口边界裁掉 */
+  width: 132px;
+  height: 132px;
+  cursor: pointer;
+}
+
+/* 真正随 hover 缩放的是这层:常态 96,原点钉在左下角那条基准线 */
+.box-scale {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 96px;
+  height: 96px;
+  transform-origin: left bottom;
+  transform: scale(1);
+  transition: transform 160ms cubic-bezier(.3, 1.2, .4, 1);
+}
+.box:hover .box-scale,
+.hub[data-open="1"] .box-scale { transform: scale(1.375); } /* 96 * 1.375 ≈ 132 */
+
+/* 脚下一小片软影,代替云朵给一点"落地感" */
+.box-scale::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 68px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(90, 90, 130, .16), rgba(90, 90, 130, 0) 70%);
+  pointer-events: none;
+}
+
+.mascot {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 92px;
+  height: 92px;
+  transform: translateX(-50%);
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 5px 7px rgba(80, 70, 110, .16));
+}
+
+/* 整组轻轻浮(浮动作用在缩放层上,不干扰 .box 的窗口占位) */
+.box-scale { animation: boxFloat 3.4s ease-in-out infinite; }
+@keyframes boxFloat {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50%      { transform: scale(1) translateY(-3px); }
+}
+/* hover / 开菜单时停掉浮动,交给放大态的静止 scale(1.375) */
+.box:hover .box-scale,
+.hub[data-open="1"] .box-scale { animation: none; }
+
+/* ---------------- 菜单(浮在云上方) ---------------- */
+[hidden] { display: none !important; }
+.menu {
+  position: absolute;
+  left: 0;
+  bottom: 148px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 216px;
+  animation: menuUp 220ms cubic-bezier(.3, 1.3, .4, 1);
+}
+@keyframes menuUp {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.group {
+  position: relative;
+  display: block;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 12px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  background: #fffdf4;
+  box-shadow: 0 8px 22px rgba(40, 40, 60, .18);
+  transition: transform 90ms ease-out, box-shadow 120ms linear;
+}
+.item:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(40, 40, 60, .22); }
+.item:active { transform: scale(.97); }
+.item:disabled { opacity: .5; pointer-events: none; }
+.item b { display: block; font-size: 13.5px; color: var(--ink); }
+.item small { display: block; font-size: 10.5px; color: var(--ash); margin-top: 1px;
+  max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .ico {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 800;
+  background: var(--mint);
+  color: #fff;
+}
+
+.chev {
+  margin-left: auto;
+  flex: none;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ash);
+  transition: transform 160ms ease-out;
+}
+
+/* 二级菜单:与一级右缘留 16px 间距 */
+.sub,
+.recent-list {
+  position: absolute;
+  left: calc(100% + 16px);
+  top: -6px;
+  width: 252px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fffdf4;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(40, 40, 60, .22);
+  animation: flyIn 180ms cubic-bezier(.3, 1.2, .4, 1);
+  z-index: 5;
+}
+@keyframes flyIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 「新会话」的二级:两个按钮挨着排 */
+.sub .item { padding: 8px 9px; box-shadow: none; background: rgba(31, 38, 55, .045); }
+.sub .item:hover { background: rgba(143, 214, 184, .28); }
+.sub .ico { background: rgba(31, 38, 55, .08); color: #5f6b80; font-size: 13px; }
+
+/* 「历史会话」的二级:目录条目 */
+.recent-list { max-height: 240px; overflow-y: auto; }
+.recent-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px 7px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.recent-list li .txt { flex: 1; min-width: 0; }
+
+/* 行尾收拾键:平时藏着,鼠标扫到这行才冒出来,别抢内容的注意力 */
+.row-act {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8a8577;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms linear;
+}
+.recent-list li:hover .row-act { opacity: .75; }
+.row-act:hover { opacity: 1; background: rgba(31, 38, 55, .1); }
+.row-act.armed {
+  opacity: 1;
+  width: auto;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #b3271c;
+  color: #fff;
+}
+.recent-list li:hover { background: rgba(143, 214, 184, .28); }
+.recent-list li.picked { background: rgba(143, 214, 184, .32); }
+.recent-list li.picked b::before { content: '✓ '; color: #2e9c74; }
+
+/* 在世会话 vs 光秃秃的目录:名字常常一模一样(同一个工程),
+   靠底色和左侧色条把两类分开,不然完全看不出哪行是"收起来的那只"。 */
+.recent-list li.docked {
+  background: rgba(143, 214, 184, .18);
+  border-left: 3px solid #62c09a;
+}
+.recent-list li.docked b { color: #1f7a5a; }
+.recent-list li.onstage {
+  background: rgba(31, 38, 55, .05);
+  border-left: 3px solid rgba(31, 38, 55, .25);
+}
+.recent-list li.idle-dir { border-left: 3px solid transparent; }
+/* 观测型客户端下,目录行点不出会话:别用 hover 假装它可点(删除键照样能按) */
+.recent-list li.inert { cursor: default; }
+.recent-list li.inert:hover { background: transparent; }
+.recent-list b { display: block; font-size: 12.5px; color: var(--ink); }
+.recent-list small { display: block; font-size: 10.5px; color: var(--ash);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 开张成功的 puff:一小朵云往上飘 */
+.puff {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 96px;
+  height: 60px;
+  margin-left: -48px;
+  z-index: 7;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 82%, #fff 0 17px, transparent 18px),
+    radial-gradient(circle at 52% 58%, #fff 0 22px, transparent 23px),
+    radial-gradient(circle at 84% 80%, #fff 0 18px, transparent 19px);
+  animation: puffUp .9s ease-out forwards;
+}
+@keyframes puffUp {
+  from { opacity: .95; transform: translateY(10px) scale(.65); }
+  to   { opacity: 0; transform: translateY(-38px) scale(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box, .menu, .puff { animation: none !important; }
+}

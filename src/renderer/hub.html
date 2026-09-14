@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; img-src data: file:; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <title>开张宝盒</title>
+  <link rel="stylesheet" href="hub.css">
+</head>
+<body>
+  <!--
+    开张宝盒:一朵白软云上坐着云糯。
+    点它 → 菜单冒出来 → 开新活(选目录)→ 冒一小朵云 puff,
+    新的云糯随后从一朵云里冒出来。
+  -->
+  <div id="hub" class="hub" data-open="0">
+
+    <!-- 点开后的菜单:新会话 / 历史会话 / 开工客户端(不常用放最底);双击盒子 = 直接快速新会话 -->
+    <nav id="menu" class="menu" hidden>
+      <div class="group">
+        <button id="headNew" class="item head" type="button">
+          <span class="ico">＋</span>
+          <span><b>新会话</b><small>快速开工 / 选择目录</small></span>
+          <i id="newChev" class="chev">▸</i>
+        </button>
+        <div id="subNew" class="sub" hidden>
+          <button id="btnQuick" class="item subitem" type="button">
+            <span class="ico">▶</span>
+            <span><b>快速新会话</b><small id="quickHint">加载中…</small></span>
+          </button>
+          <button id="btnPickDir" class="item subitem" type="button">
+            <span class="ico">＋</span>
+            <span><b>选择目录新会话</b><small>打开目录选择框</small></span>
+          </button>
+        </div>
+      </div>
+
+      <!--
+        历史会话:一栏管到底,不再分「叫回」和「最近目录」两个概念。
+        - 还在进行中的会话(含收进宝盒的)→ 点一下把原来那只放回桌面
+        - 曾经开工、现在没会话的目录  → 点一下在那儿开会话
+      -->
+      <div class="group">
+        <button id="headHistory" class="item head" type="button">
+          <span class="ico">☁</span>
+          <span><b>历史会话</b><small id="recentCount">—</small></span>
+          <i id="hisChev" class="chev">▸</i>
+        </button>
+        <ul id="recentList" class="recent-list" hidden></ul>
+      </div>
+
+      <div class="group">
+        <button id="headClient" class="item head" type="button">
+          <span class="ico">⚙</span>
+          <span><b>开工客户端</b><small id="clientValue">kiro</small></span>
+          <i id="clientChev" class="chev">▸</i>
+        </button>
+        <ul id="clientList" class="recent-list picker" hidden></ul>
+      </div>
+    </nav>
+
+    <!-- 云糯本体:无云朵,直接立在角落。
+         .box 是窗口内的固定占位(按放大态留够),.box-scale 才是随 hover 缩放的那层 -->
+    <div id="box" class="box" title="单击开菜单 · 双击快速新会话">
+      <div class="box-scale">
+        <img id="mascot" class="mascot" alt="云糯" draggable="false">
+        <span id="puff" class="puff" hidden></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="hub.js"></script>
+</body>
+</html>

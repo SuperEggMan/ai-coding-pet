@@ -1,0 +1,300 @@
+{
+  "name": "准奏盖章版",
+  "author": "my-skills",
+  "描述": "把权限审批映射成奏折：请奏 / 准奏 / 驳回 / 请奏退出 / 瘫。八态肢体差异刻意拉大，靠位姿而非换图。",
+  "layers": {
+    "pet": "pet.svg"
+  },
+
+  "palette": {
+    "ink": "#1f2637",
+    "paper": "#f7f1e3",
+    "seal": "#d7382b",
+    "amber": "#e08b1f",
+    "azure": "#3f7fbf",
+    "jade": "#2f9e6b",
+    "ash": "#8f9bb3"
+  },
+
+  "tierAccent": {
+    "red": "#d7382b",
+    "amber": "#e08b1f",
+    "blue": "#3f7fbf"
+  },
+
+  "tierLabel": {
+    "red": "急奏",
+    "amber": "常奏",
+    "blue": "例奏"
+  },
+
+  "propLayers": ["scroll", "seal", "sweat", "bang", "zzz", "aura", "blush"],
+
+  "verbs": {
+    "allow": "准奏",
+    "always": "永准",
+    "deny": "驳回",
+    "defer": "交回终端",
+    "ack": "阅"
+  },
+
+  "states": {
+    "idle": {
+      "label": "待命",
+      "accent": "#8f9bb3",
+      "note": "无差事，候着",
+      "in": { "ms": 420, "easing": "cubic-bezier(.4,0,.2,1)" },
+      "pose": {
+        "rig": { "y": 0, "r": 0 },
+        "body": {},
+        "armL": { "r": 0 },
+        "armR": { "r": 0 },
+        "head": { "y": 0, "r": 0 },
+        "hatWingL": { "r": 0 },
+        "hatWingR": { "r": 0 },
+        "browL": { "y": 0, "r": 0 },
+        "browR": { "y": 0, "r": 0 },
+        "eyeL": { "sy": 1 },
+        "eyeR": { "sy": 1 },
+        "mouth": { "sx": 1, "sy": 1 },
+        "shadow": { "sx": 1, "o": 0.18 }
+      },
+      "loop": "breathe"
+    },
+
+    "running": {
+      "label": "运行中",
+      "accent": "#3f7fbf",
+      "note": "正在办",
+      "in": { "ms": 240, "easing": "cubic-bezier(.34,1.3,.64,1)" },
+      "pose": {
+        "rig": { "y": -2, "r": -3 },
+        "armL": { "r": -22 },
+        "armR": { "r": 18 },
+        "head": { "y": 1, "r": -2 },
+        "hatWingL": { "r": -8 },
+        "hatWingR": { "r": 8 },
+        "browL": { "y": 2, "r": 6 },
+        "browR": { "y": 2, "r": -6 },
+        "eyeL": { "sy": 0.72 },
+        "eyeR": { "sy": 0.72 },
+        "mouth": { "sx": 0.7, "sy": 0.6 },
+        "shadow": { "sx": 0.94, "o": 0.14 }
+      },
+      "loop": "bob"
+    },
+
+    "awaiting_grant": {
+      "label": "请奏",
+      "accent": "#d7382b",
+      "accentFrom": "tier",
+      "note": "举折候批",
+      "in": { "ms": 280, "easing": "cubic-bezier(.2,1.5,.4,1)" },
+      "pose": {
+        "rig": { "y": 3, "r": 0 },
+        "armL": { "r": -55, "y": -10 },
+        "armR": { "r": 55, "y": -10 },
+        "scroll": { "o": 1, "y": -14, "r": -4, "s": 1.06 },
+        "head": { "y": -2, "r": 0 },
+        "hatWingL": { "r": 6 },
+        "hatWingR": { "r": -6 },
+        "browL": { "y": -3, "r": -10 },
+        "browR": { "y": -3, "r": 10 },
+        "eyeL": { "sy": 1.18 },
+        "eyeR": { "sy": 1.18 },
+        "mouth": { "sx": 1.1, "sy": 1.5 },
+        "bang": { "o": 1, "s": 1 },
+        "aura": { "o": 1 },
+        "shadow": { "sx": 1.02, "o": 0.2 }
+      },
+      "loop": "present"
+    },
+
+    "awaiting_choice": {
+      "label": "请择",
+      "accent": "#e08b1f",
+      "note": "两议待裁",
+      "in": { "ms": 300, "easing": "cubic-bezier(.2,1.4,.4,1)" },
+      "pose": {
+        "rig": { "y": 0, "r": 0 },
+        "armL": { "r": -52, "x": -8 },
+        "armR": { "r": 52, "x": 8 },
+        "scroll": { "o": 1, "y": -18, "s": 0.9 },
+        "head": { "r": -9, "y": 0 },
+        "hatWingL": { "r": -12 },
+        "hatWingR": { "r": 4 },
+        "browL": { "y": -2, "r": -6 },
+        "browR": { "y": 1, "r": 4 },
+        "eyeL": { "sy": 1.1 },
+        "eyeR": { "sy": 1.1 },
+        "mouth": { "sx": 0.9, "sy": 1.7 },
+        "aura": { "o": 0.8 },
+        "shadow": { "sx": 1, "o": 0.18 }
+      },
+      "loop": "tilt"
+    },
+
+    "done": {
+      "label": "复奏",
+      "accent": "#2f9e6b",
+      "note": "已办毕，呈上",
+      "in": { "ms": 340, "easing": "cubic-bezier(.18,1.7,.35,1)" },
+      "pose": {
+        "rig": { "y": -9, "r": 0 },
+        "armL": { "r": -30 },
+        "armR": { "r": 44, "y": 6 },
+        "scroll": { "o": 1, "y": -8, "s": 1 },
+        "seal": { "o": 1, "y": 26, "r": -8, "s": 1.06 },
+        "head": { "y": -2 },
+        "hatWingL": { "r": -14 },
+        "hatWingR": { "r": 14 },
+        "browL": { "y": -4, "r": 4 },
+        "browR": { "y": -4, "r": -4 },
+        "eyeL": { "sy": 0.3 },
+        "eyeR": { "sy": 0.3 },
+        "mouth": { "sx": 1.25, "sy": 1.9 },
+        "blush": { "o": 1 },
+        "shadow": { "sx": 0.86, "o": 0.1 }
+      },
+      "loop": "settle"
+    },
+
+    "stale": {
+      "label": "久候",
+      "accent": "#c2571f",
+      "note": "举折久矣，未见批复",
+      "in": { "ms": 760, "easing": "cubic-bezier(.4,0,.6,1)" },
+      "pose": {
+        "rig": { "y": 8, "r": 0 },
+        "armL": { "r": -44, "y": -4 },
+        "armR": { "r": 44, "y": -4 },
+        "scroll": { "o": 1, "y": -26, "r": -6, "s": 1 },
+        "head": { "y": 7, "r": 3 },
+        "hatWingL": { "r": 26 },
+        "hatWingR": { "r": -26 },
+        "browL": { "y": 3, "r": 16 },
+        "browR": { "y": 3, "r": -16 },
+        "eyeL": { "sy": 0.6 },
+        "eyeR": { "sy": 0.6 },
+        "mouth": { "sx": 1.15, "sy": 0.5 },
+        "sweat": { "o": 1 },
+        "aura": { "o": 0.9 },
+        "shadow": { "sx": 1.06, "o": 0.22 }
+      },
+      "loop": "tremble"
+    },
+
+    "exiting": {
+      "label": "请退",
+      "accent": "#7a6a52",
+      "note": "臣请告退",
+      "in": { "ms": 520, "easing": "cubic-bezier(.33,0,.2,1)" },
+      "pose": {
+        "rig": { "y": 10, "r": 0 },
+        "body": { "sy": 0.94 },
+        "armL": { "r": 34, "x": 14 },
+        "armR": { "r": -34, "x": -14 },
+        "head": { "y": 14, "r": 0 },
+        "hatWingL": { "r": 30 },
+        "hatWingR": { "r": -30 },
+        "browL": { "y": 2, "r": 8 },
+        "browR": { "y": 2, "r": -8 },
+        "eyeL": { "sy": 0.2 },
+        "eyeR": { "sy": 0.2 },
+        "mouth": { "sx": 0.8, "sy": 0.5 },
+        "shadow": { "sx": 1.12, "o": 0.24 }
+      },
+      "loop": "bowHold"
+    },
+
+    "limp": {
+      "label": "瘫",
+      "accent": "#8f9bb3",
+      "note": "无人问，倒了",
+      "in": { "ms": 1100, "easing": "cubic-bezier(.55,.06,.68,.19)" },
+      "pose": {
+        "rig": { "y": 26, "r": -74, "x": -14 },
+        "armL": { "r": 12 },
+        "armR": { "r": -8 },
+        "scroll": { "o": 0.85, "y": 6, "r": 22 },
+        "head": { "y": 2, "r": -8 },
+        "hatWingL": { "r": 8 },
+        "hatWingR": { "r": -4 },
+        "browL": { "y": 4, "r": 0 },
+        "browR": { "y": 4, "r": 0 },
+        "eyeL": { "sy": 0.08 },
+        "eyeR": { "sy": 0.08 },
+        "mouth": { "sx": 0.6, "sy": 0.3 },
+        "zzz": { "o": 1 },
+        "shadow": { "sx": 1.34, "o": 0.26 }
+      },
+      "loop": "snore"
+    }
+  },
+
+  "loops": {
+    "breathe": {
+      "ms": 3400,
+      "tracks": {
+        "rig": [{ "y": 0 }, { "y": -2.5 }, { "y": 0 }],
+        "shadow": [{ "sx": 1 }, { "sx": 0.97 }, { "sx": 1 }],
+        "hatWingL": [{ "r": 0 }, { "r": 4 }, { "r": 0 }],
+        "hatWingR": [{ "r": 0 }, { "r": -4 }, { "r": 0 }]
+      }
+    },
+    "bob": {
+      "ms": 520,
+      "tracks": {
+        "rig": [{ "y": -2 }, { "y": -6 }, { "y": -2 }],
+        "armL": [{ "r": -22 }, { "r": -6 }, { "r": -22 }],
+        "armR": [{ "r": 18 }, { "r": 4 }, { "r": 18 }],
+        "shadow": [{ "sx": 0.94 }, { "sx": 0.88 }, { "sx": 0.94 }]
+      }
+    },
+    "present": {
+      "ms": 1600,
+      "tracks": {
+        "scroll": [{ "y": -14 }, { "y": -20 }, { "y": -14 }],
+        "armL": [{ "r": -55, "y": -10 }, { "r": -60, "y": -14 }, { "r": -55, "y": -10 }],
+        "armR": [{ "r": 55, "y": -10 }, { "r": 60, "y": -14 }, { "r": 55, "y": -10 }],
+        "bang": [{ "s": 1 }, { "s": 1.16 }, { "s": 1 }]
+      }
+    },
+    "tilt": {
+      "ms": 2200,
+      "tracks": {
+        "head": [{ "r": -9 }, { "r": -3 }, { "r": -9 }],
+        "armL": [{ "r": -52 }, { "r": -46 }, { "r": -52 }],
+        "armR": [{ "r": 52 }, { "r": 58 }, { "r": 52 }]
+      }
+    },
+    "settle": {
+      "ms": 2600,
+      "tracks": {
+        "rig": [{ "y": -9 }, { "y": -6 }, { "y": -9 }],
+        "seal": [{ "r": -8 }, { "r": -4 }, { "r": -8 }]
+      }
+    },
+    "tremble": {
+      "ms": 280,
+      "tracks": {
+        "rig": [{ "x": 0, "y": 8 }, { "x": 1.4, "y": 8.6 }, { "x": -1.2, "y": 8 }, { "x": 0, "y": 8 }],
+        "sweat": [{ "y": 0, "o": 1 }, { "y": 5, "o": 0.5 }, { "y": 0, "o": 1 }, { "y": 0, "o": 1 }]
+      }
+    },
+    "bowHold": {
+      "ms": 3000,
+      "tracks": {
+        "rig": [{ "y": 10 }, { "y": 13 }, { "y": 10 }],
+        "head": [{ "y": 14 }, { "y": 16 }, { "y": 14 }]
+      }
+    },
+    "snore": {
+      "ms": 5200,
+      "tracks": {
+        "rig": [{ "y": 26 }, { "y": 28 }, { "y": 26 }],
+        "zzz": [{ "o": 0.3, "y": 0 }, { "o": 1, "y": -8 }, { "o": 0.3, "y": -16 }]
+      }
+    }
+  }
+}

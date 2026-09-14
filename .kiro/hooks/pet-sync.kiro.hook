@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "同步到桌宠 pet",
+  "description": "Kiro 会话开始时在桌宠登记一只云糯、结束时上报完成(复奏)。桌宠在左下角,可点开查看。要求本机桌宠(AI Coding Pet)正在运行,监听 127.0.0.1:47800。",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "SID=kiro-$(echo -n \"$PWD\" | md5 | head -c 10); curl -s -X POST -H 'Content-Type: application/json' -d \"{\\\"session_id\\\":\\\"$SID\\\",\\\"kind\\\":\\\"session_start\\\",\\\"agent\\\":\\\"kiro\\\",\\\"cwd\\\":\\\"$PWD\\\",\\\"project\\\":\\\"$(basename \\\"$PWD\\\")\\\",\\\"title\\\":\\\"kiro 会话完成\\\"}\" http://127.0.0.1:47800/event >/dev/null; sleep 0.3; curl -s -X POST -H 'Content-Type: application/json' -d \"{\\\"session_id\\\":\\\"$SID\\\",\\\"kind\\\":\\\"stop\\\",\\\"text\\\":\\\"kiro 任务已完成\\\"}\" http://127.0.0.1:47800/event >/dev/null",
+    "timeout": 15
+  }
+}

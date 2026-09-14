@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- 占位图：请奏（awaiting_grant）。真图覆盖同名文件即可。透明底，脚底对齐 y=963 -->
+  <!-- 基准线参考，接真实资产时应删掉 -->
+  <line x1="0" y1="963" x2="1024" y2="963" stroke="#000" stroke-opacity="0.12" stroke-dasharray="12 12" stroke-width="3"/>
+  <line x1="512" y1="0" x2="512" y2="1024" stroke="#000" stroke-opacity="0.08" stroke-dasharray="12 12" stroke-width="3"/>
+  <g transform="rotate(0 512 963) translate(0 0)">
+      <rect x="358.5" y="454.4" width="307" height="508.6" rx="79.82000000000001" fill="#d7382b"/>
+      <circle cx="512" cy="348" r="152" fill="#d7382b"/>
+      <rect x="332.5" y="500" width="52" height="208" rx="26" fill="#d7382b"
+       transform="rotate(-125 358.5 500)"/><rect x="639.5" y="500" width="52" height="208" rx="26" fill="#d7382b"
+       transform="rotate(125 665.5 500)"/>
+      <rect x="373.85" y="530.4" width="276.3" height="138.15" rx="8"
+    fill="#fdf6e3" stroke="#c9b48a" stroke-width="5"/>
+    </g>
+  <text x="512" y="1009" font-size="44" font-weight="700" text-anchor="middle"
+        fill="#d7382b" font-family="'PingFang SC',sans-serif">请奏</text>
+</svg>
